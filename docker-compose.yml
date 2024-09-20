@@ -9,7 +9,7 @@ services:
       - KAFKA_BROKER=kafka:9092
       - MYSQL_HOST=mysql
       - MYSQL_USER=root
-      - MYSQL_PASSWORD=rsYR!1606
+      - MYSQL_PASSWORD=PWD
       - MYSQL_DATABASE=notifications
       - PORT=3000
     ports:
@@ -28,7 +28,7 @@ services:
       - KAFKA_BROKER=kafka:9092
       - MYSQL_HOST=mysql
       - MYSQL_USER=root
-      - MYSQL_PASSWORD=rsYR!1606
+      - MYSQL_PASSWORD=PWD
       - MYSQL_DATABASE=notifications
       # - WEBSOCKET_SERVER_URL=ws://notification-service:8082  # Use service name for WebSocket connection
     depends_on:
@@ -47,7 +47,7 @@ services:
   mysql:
     image: mysql:5.7
     environment:
-      MYSQL_ROOT_PASSWORD: rsYR!1606
+      MYSQL_ROOT_PASSWORD: PWD
       MYSQL_DATABASE: notifications
     ports:
       - "3307:3306"
