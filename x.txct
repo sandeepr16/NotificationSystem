@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  notification-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - MYSQL_HOST=mysql
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=rsYR!1606
+      - MYSQL_DATABASE=notifications
+      - PORT=3000
+    ports:
+      - "3000:3000"
+      - "8082:8082"
+    depends_on:
+      - mysql
+      - kafka
+    restart: always
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile2
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - MYSQL_HOST=mysql
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=rsYR!1606
+      - MYSQL_DATABASE=notifications
+    depends_on:
+      - mysql
+      - kafka
+      - notification-service
+    restart: always
+
+  mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: rsYR!1606
+      MYSQL_DATABASE: notifications
+    ports:
+      - "3307:3306" # Changed host port to 3307 to avoid conflict
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./notification_table.sql:/docker-entrypoint-initdb.d/notification_table.sql
+    
+
+  kafka:
+    image: bitnami/kafka:latest
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092  # Ensure this matches the service name or the internal Docker hostname
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+
+    
+
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    ports:
+      - "2181:2181"
+    
+
+volumes:
+  mysql_data:

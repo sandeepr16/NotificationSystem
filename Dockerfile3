@@ -1,0 +1,18 @@
+# Dockerfile3
+# Use Node.js as the base image
+FROM node:18
+
+# Set the working directory
+WORKDIR /usr/src/app
+
+# Install http-server globally
+RUN npm install -g http-server
+
+# Copy the HTML file to the container
+COPY index.html .
+
+# Expose the port that http-server will use
+EXPOSE 8080
+
+# Command to run http-server
+CMD ["http-server", ".", "-p", "8080"]

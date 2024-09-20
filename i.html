@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notification Service</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    h2 {
+      text-align: center;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 20px;
+    }
+    label {
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input, select, textarea {
+      margin-bottom: 10px;
+      padding: 8px;
+      font-size: 16px;
+    }
+    button {
+      padding: 10px;
+      background-color: #007BFF;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .message {
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 5px;
+    }
+    .message.success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .message.error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    .live-updates {
+      margin-top: 20px;
+      border-top: 1px solid #ccc;
+      padding-top: 10px;
+    }
+    .notification-update {
+      margin-bottom: 5px;
+      padding: 5px;
+      border-left: 3px solid #007BFF;
+      background: #e9ecef;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Send Notifications</h2>
+    <form id="notificationForm">
+      <label for="userIdStart">Starting User ID:</label>
+      <input type="number" id="userIdStart" name="userIdStart" required min="1" value="1">
+
+      <label for="type">Notification Type:</label>
+      <select id="type" name="type" required>
+        <option value="EMAIL">Email</option>
+        <option value="SMS">SMS</option>
+        <option value="PUSH">Push Notification</option>
+      </select>
+
+      <label for="content">Notification Content:</label>
+      <textarea id="content" name="content" rows="4" required>Sample Notification</textarea>
+
+      <label for="count">Number of Notifications:</label>
+      <input type="number" id="count" name="count" value="10" min="1">
+
+      <button type="submit">Send Notifications</button>
+    </form>
+
+    <div id="responseMessage" class="message" style="display: none;"></div>
+
+    <div class="live-updates">
+      <h3>Live Notification Updates</h3>
+      <div id="updates"></div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('notificationForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+
+      const userIdStart = parseInt(document.getElementById('userIdStart').value, 10);
+      const type = document.getElementById('type').value;
+      const content = document.getElementById('content').value;
+      const count = parseInt(document.getElementById('count').value, 10);
+
+      const responseMessage = document.getElementById('responseMessage');
+      responseMessage.style.display = 'none'; // Hide previous messages
+
+      // Function to send a single notification
+      const sendNotification = async (index) => {
+        try {
+          const response = await fetch('http://localhost:3000/send-notification', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: userIdStart + index, // Increment userId for each notification
+              type: type,
+              content: `${content} - Notification ${index + 1}`, // Add index to distinguish content
+            }),
+          });
+
+          if (!response.ok) {
+            const errorMessage = await response.text();
+            throw new Error(`Error: ${response.status} - ${errorMessage}`);
+          }
+
+          console.log(`Notification ${index + 1} sent successfully.`);
+        } catch (error) {
+          console.error(`Failed to send notification ${index + 1}:`, error.message);
+        }
+      };
+
+      // Sending notifications in parallel
+      const promises = [];
+      for (let i = 0; i < count; i++) {
+        promises.push(sendNotification(i));
+      }
+
+      try {
+        await Promise.all(promises);
+        responseMessage.textContent = `Sent ${count} notifications successfully.`;
+        responseMessage.className = 'message success';
+        responseMessage.style.display = 'block';
+      } catch (error) {
+        responseMessage.textContent = `Failed to send some notifications.`;
+        responseMessage.className = 'message error';
+        responseMessage.style.display = 'block';
+      }
+    });
+
+    // WebSocket setup to receive live updates
+    const ws = new WebSocket('ws://localhost:8082');
+
+    ws.onmessage = (event) => {
+      const update = JSON.parse(event.data);
+      const updatesDiv = document.getElementById('updates');
+
+      const updateElement = document.createElement('div');
+      updateElement.className = 'notification-update';
+
+      if (update.status === 'DELIVERED') {
+        updateElement.textContent = `User ${update.userId} received Notification ID: ${update.notificationId} - Status: ${update.status} - Content: ${update.content}`;
+        updateElement.style.borderLeft = '3px solid green';
+      } else if (update.status === 'FAILED') {
+        updateElement.textContent = `Failed to deliver Notification ID: ${update.notificationId} to User ${update.userId} - Content: ${update.content}`;
+        updateElement.style.borderLeft = '3px solid red';
+      } else {
+        updateElement.textContent = `Notification ID: ${update.notificationId} - Status: ${update.status} - Content: ${update.content}`;
+      }
+
+      updatesDiv.prepend(updateElement); // Add new updates to the top
+    };
+
+    ws.onopen = () => console.log('Connected to WebSocket server for live updates.');
+    ws.onerror = (error) => console.error('WebSocket error:', error);
+    ws.onclose = () => console.log('Disconnected from WebSocket server.');
+  </script>
+</body>
+</html>
